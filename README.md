@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src=".github/gorm-permission.svg" alt="gorm-permission" width="520" />
+  <img src=".github/gorm-permission-new.png" alt="gorm-permission" width="300" />
 </p>
 
 <p align="center">
