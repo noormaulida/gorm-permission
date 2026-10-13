@@ -12,7 +12,7 @@ type Manager struct {
 type Option func(*Manager)
 
 // WithDefaultGuard sets the guard used when a model does not implement
-// GuardedAuthorizable. Spatie / SuitCMS typically use "cms" or "web".
+// GuardedAuthorizable. Spatie typically use "cms" or "web".
 func WithDefaultGuard(guard string) Option {
 	return func(m *Manager) {
 		if guard != "" {
