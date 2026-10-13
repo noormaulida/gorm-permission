@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src=".github/gorm-permission.svg" alt="gorm-permission" width="200" />
+  <img src=".github/gorm-permission.svg" alt="gorm-permission" width="520" />
 </p>
 
 <p align="center">
@@ -11,6 +11,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/noormaulida/gorm-permission/actions/workflows/go.yml">
+    <img src="https://github.com/noormaulida/gorm-permission/actions/workflows/go.yml/badge.svg" alt="Go Tests" />
+  </a>
+  <a href="https://codecov.io/gh/noormaulida/gorm-permission">
+    <img src="https://codecov.io/gh/noormaulida/gorm-permission/graph/badge.svg" alt="codecov" />
+  </a>
   <a href="https://pkg.go.dev/github.com/noormaulida/gorm-permission">
     <img src="https://pkg.go.dev/badge/github.com/noormaulida/gorm-permission.svg" alt="Go Reference" />
   </a>
