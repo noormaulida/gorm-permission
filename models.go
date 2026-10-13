@@ -28,9 +28,10 @@ func (Role) TableName() string { return "roles" }
 
 // ModelHasPermission is the polymorphic direct-permission pivot.
 type ModelHasPermission struct {
-	PermissionID uint64 `gorm:"primaryKey;column:permission_id"`
-	ModelType    string `gorm:"size:255;primaryKey;column:model_type"`
-	ModelID      uint64 `gorm:"primaryKey;column:model_id;index:model_has_permissions_model_id_model_type_index"`
+	PermissionID uint64     `gorm:"primaryKey;column:permission_id"`
+	ModelType    string     `gorm:"size:255;primaryKey;column:model_type"`
+	ModelID      uint64     `gorm:"primaryKey;column:model_id;index:model_has_permissions_model_id_model_type_index"`
+	Permission   Permission `json:"-" gorm:"foreignKey:PermissionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // TableName keeps Spatie's default table name.
@@ -41,6 +42,7 @@ type ModelHasRole struct {
 	RoleID    uint64 `gorm:"primaryKey;column:role_id"`
 	ModelType string `gorm:"size:255;primaryKey;column:model_type"`
 	ModelID   uint64 `gorm:"primaryKey;column:model_id;index:model_has_roles_model_id_model_type_index"`
+	Role      Role   `json:"-" gorm:"foreignKey:RoleID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // TableName keeps Spatie's default table name.
@@ -48,8 +50,10 @@ func (ModelHasRole) TableName() string { return "model_has_roles" }
 
 // RoleHasPermission links roles to permissions.
 type RoleHasPermission struct {
-	PermissionID uint64 `gorm:"primaryKey;column:permission_id"`
-	RoleID       uint64 `gorm:"primaryKey;column:role_id"`
+	PermissionID uint64     `gorm:"primaryKey;column:permission_id"`
+	RoleID       uint64     `gorm:"primaryKey;column:role_id"`
+	Permission   Permission `json:"-" gorm:"foreignKey:PermissionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Role         Role       `json:"-" gorm:"foreignKey:RoleID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 // TableName keeps Spatie's default table name.

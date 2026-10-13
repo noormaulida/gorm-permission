@@ -2,9 +2,12 @@ package permission_test
 
 import (
 	"errors"
+	"os"
 	"testing"
 
 	permission "github.com/noormaulida/gorm-permission"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -22,21 +25,86 @@ func (a Admin) PermissionGuardName() string { return "cms" }
 
 func setup(t *testing.T) (*gorm.DB, *permission.Manager) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{
-		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
-	})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
+	db := openTestDB(t)
 	if err := db.AutoMigrate(&Admin{}); err != nil {
 		t.Fatalf("migrate admin: %v", err)
 	}
 	if err := permission.Migrate(db); err != nil {
 		t.Fatalf("migrate permission: %v", err)
 	}
+	enableForeignKeys(t, db)
+	resetPermissionTables(t, db)
 	return db, permission.New(db, permission.WithDefaultGuard("cms"))
 }
 
+func openTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	cfg := &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)}
+	if dsn := os.Getenv("GORM_PERMISSION_MYSQL_DSN"); dsn != "" {
+		db, err := gorm.Open(mysql.Open(dsn), cfg)
+		if err != nil {
+			t.Fatalf("open mysql: %v", err)
+		}
+		return db
+	}
+	if dsn := os.Getenv("GORM_PERMISSION_POSTGRES_DSN"); dsn != "" {
+		db, err := gorm.Open(postgres.Open(dsn), cfg)
+		if err != nil {
+			t.Fatalf("open postgres: %v", err)
+		}
+		return db
+	}
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), cfg)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	return db
+}
+
+func enableForeignKeys(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	if db.Dialector.Name() == "sqlite" {
+		if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+			t.Fatalf("enable sqlite foreign keys: %v", err)
+		}
+	}
+}
+
+func resetPermissionTables(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	tables := []string{
+		"role_has_permissions",
+		"model_has_roles",
+		"model_has_permissions",
+		"roles",
+		"permissions",
+		"admins",
+	}
+	switch db.Dialector.Name() {
+	case "mysql":
+		if err := db.Exec("SET FOREIGN_KEY_CHECKS = 0").Error; err != nil {
+			t.Fatalf("disable fk checks: %v", err)
+		}
+		for _, table := range tables {
+			if db.Migrator().HasTable(table) {
+				if err := db.Exec("TRUNCATE TABLE " + table).Error; err != nil {
+					t.Fatalf("truncate %s: %v", table, err)
+				}
+			}
+		}
+		if err := db.Exec("SET FOREIGN_KEY_CHECKS = 1").Error; err != nil {
+			t.Fatalf("enable fk checks: %v", err)
+		}
+	case "postgres":
+		for _, table := range tables {
+			if db.Migrator().HasTable(table) {
+				if err := db.Exec("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE").Error; err != nil {
+					t.Fatalf("truncate %s: %v", table, err)
+				}
+			}
+		}
+	}
+}
 func TestAssignRoleGivesPermissionsViaRole(t *testing.T) {
 	db, perm := setup(t)
 

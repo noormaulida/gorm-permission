@@ -20,6 +20,7 @@ func openSilent(t *testing.T, name string) *gorm.DB {
 	if err := Migrate(db); err != nil {
 		t.Fatal(err)
 	}
+	_ = db.Exec("PRAGMA foreign_keys = ON")
 	return db
 }
 
@@ -73,7 +74,7 @@ func TestLoadRoleDBError(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = sqlDB.Close()
-	_, err = m.loadRole(role)
+	_, err = m.loadRole(db, role)
 	if err == nil || errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected db error, got %v", err)
 	}
@@ -102,6 +103,12 @@ func TestNilDBCheckPaths(t *testing.T) {
 	if _, err := m.HasPermissionTo(model, "p"); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("HasPermissionTo: %v", err)
 	}
+	if _, err := m.HasAnyPermission(model, "p"); !errors.Is(err, ErrInvalidArgument) {
+		t.Fatalf("HasAnyPermission: %v", err)
+	}
+	if _, err := m.HasAllPermissions(model, "p"); !errors.Is(err, ErrInvalidArgument) {
+		t.Fatalf("HasAllPermissions: %v", err)
+	}
 	if _, err := m.RoleHasPermission(role, "p"); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("RoleHasPermission: %v", err)
 	}
@@ -114,10 +121,29 @@ func TestNilDBCheckPaths(t *testing.T) {
 	if _, err := m.FindRole("x"); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("FindRole: %v", err)
 	}
-	if _, err := m.resolvePermissions("cms", []string{"p"}); !errors.Is(err, ErrInvalidArgument) {
+	if _, err := m.resolvePermissions(nil, "cms", []string{"p"}); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("resolvePermissions: %v", err)
 	}
-	if _, err := m.resolveRoles("cms", []string{"r"}); !errors.Is(err, ErrInvalidArgument) {
+	if _, err := m.resolveRoles(nil, "cms", []string{"r"}); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("resolveRoles: %v", err)
+	}
+	if _, err := m.loadRole(nil, role); !errors.Is(err, ErrInvalidArgument) {
+		t.Fatalf("loadRole nil db: %v", err)
+	}
+}
+
+func TestResolveFindDBErrors(t *testing.T) {
+	db := openSilent(t, "resolve_find_err")
+	m := New(db, WithDefaultGuard("cms"))
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = sqlDB.Close()
+	if _, err := m.resolvePermissions(db, "cms", []string{"p"}); err == nil {
+		t.Fatal("resolvePermissions expected error")
+	}
+	if _, err := m.resolveRoles(db, "cms", []string{"r"}); err == nil {
+		t.Fatal("resolveRoles expected error")
 	}
 }

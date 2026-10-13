@@ -10,31 +10,76 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  sqlite:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-
       - name: Verify dependencies
         run: go mod tidy && git diff --exit-code
-
-      - name: Run tests
+      - name: Test
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Run vet
+      - name: Vet
         run: go vet ./...
-
       - name: Upload coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.out
-          fail_ci_if_error: true
+          fail_ci_if_error: false
+
+  mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: gorm_permission
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        env:
+          GORM_PERMISSION_MYSQL_DSN: root:root@tcp(127.0.0.1:3306)/gorm_permission?charset=utf8mb4&parseTime=True&loc=Local
+        run: go test -race -count=1 ./...
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: permission
+          POSTGRES_PASSWORD: permission
+          POSTGRES_DB: gorm_permission
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U permission -d gorm_permission"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        env:
+          GORM_PERMISSION_POSTGRES_DSN: host=127.0.0.1 user=permission password=permission dbname=gorm_permission port=5432 sslmode=disable
+        run: go test -race -count=1 ./...

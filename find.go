@@ -149,14 +149,13 @@ func normalizeNames(names []string) ([]string, error) {
 	return out, nil
 }
 
-func (m *Manager) resolvePermissions(guard string, names []string) ([]Permission, error) {
+func (m *Manager) resolvePermissions(db *gorm.DB, guard string, names []string) ([]Permission, error) {
 	names, err := normalizeNames(names)
 	if err != nil {
 		return nil, err
 	}
-	db, err := m.conn()
-	if err != nil {
-		return nil, err
+	if db == nil {
+		return nil, ErrInvalidArgument
 	}
 	g := m.guardOrDefault(guard)
 	var perms []Permission
@@ -178,14 +177,13 @@ func (m *Manager) resolvePermissions(guard string, names []string) ([]Permission
 	return out, nil
 }
 
-func (m *Manager) resolveRoles(guard string, names []string) ([]Role, error) {
+func (m *Manager) resolveRoles(db *gorm.DB, guard string, names []string) ([]Role, error) {
 	names, err := normalizeNames(names)
 	if err != nil {
 		return nil, err
 	}
-	db, err := m.conn()
-	if err != nil {
-		return nil, err
+	if db == nil {
+		return nil, ErrInvalidArgument
 	}
 	g := m.guardOrDefault(guard)
 	var roles []Role
@@ -207,16 +205,15 @@ func (m *Manager) resolveRoles(guard string, names []string) ([]Role, error) {
 	return out, nil
 }
 
-func (m *Manager) loadRole(role *Role) (*Role, error) {
+func (m *Manager) loadRole(db *gorm.DB, role *Role) (*Role, error) {
 	if role == nil || role.ID == 0 {
 		return nil, fmt.Errorf("%w: role is required", ErrInvalidArgument)
 	}
-	db, err := m.conn()
-	if err != nil {
-		return nil, err
+	if db == nil {
+		return nil, ErrInvalidArgument
 	}
 	var r Role
-	err = db.First(&r, role.ID).Error
+	err := db.First(&r, role.ID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("%w: role id %d", ErrNotFound, role.ID)
 	}

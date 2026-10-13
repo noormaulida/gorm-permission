@@ -134,6 +134,7 @@ The same pattern works with `HasRole` / `HasAnyPermission`.
 | `model_type` | Prefer a morph map alias (`admins`) shared with Laravel |
 | `model_id` | Numeric `unsigned big integer` (Spatie default) |
 | Unique `(name, guard_name)` | Enforced by `Migrate` (same as Spatie). Existing Spatie DBs already have this index |
+| Foreign keys | Pivot rows cascade-delete when a role/permission is removed (Spatie-compatible) |
 
 ## Minimum Go version
 

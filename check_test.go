@@ -152,6 +152,12 @@ func TestHasPermissionVariants(t *testing.T) {
 	if _, err := perm.HasAnyPermission(admin); !errors.Is(err, permission.ErrInvalidArgument) {
 		t.Fatalf("HasAnyPermission empty: %v", err)
 	}
+	if _, err := perm.HasAnyPermission(nil, "p1"); !errors.Is(err, permission.ErrInvalidArgument) {
+		t.Fatalf("HasAnyPermission nil: %v", err)
+	}
+	if _, err := perm.HasAllPermissions(nil, "p1"); !errors.Is(err, permission.ErrInvalidArgument) {
+		t.Fatalf("HasAllPermissions nil: %v", err)
+	}
 
 	ok, err = perm.HasAllPermissions(admin, "p1", "p2")
 	if err != nil || ok {
