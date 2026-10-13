@@ -35,24 +35,41 @@ func New(db *gorm.DB, opts ...Option) *Manager {
 
 // DB exposes the underlying GORM handle (useful in tests and transactions).
 func (m *Manager) DB() *gorm.DB {
+	if m == nil {
+		return nil
+	}
 	return m.db
 }
 
 // DefaultGuard returns the configured default guard name.
 func (m *Manager) DefaultGuard() string {
+	if m == nil {
+		return ""
+	}
 	return m.defaultGuard
 }
 
 func (m *Manager) guardOrDefault(guard string) string {
+	if m == nil {
+		return guard
+	}
 	if guard != "" {
 		return guard
 	}
 	return m.defaultGuard
 }
 
-func (m *Manager) tx(fn func(tx *gorm.DB) error) error {
+func (m *Manager) conn() (*gorm.DB, error) {
 	if m == nil || m.db == nil {
-		return ErrInvalidArgument
+		return nil, ErrInvalidArgument
 	}
-	return m.db.Transaction(fn)
+	return m.db, nil
+}
+
+func (m *Manager) tx(fn func(tx *gorm.DB) error) error {
+	db, err := m.conn()
+	if err != nil {
+		return err
+	}
+	return db.Transaction(fn)
 }

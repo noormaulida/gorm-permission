@@ -215,7 +215,7 @@ func TestGuardMismatchViaCallback(t *testing.T) {
 	}
 }
 
-func TestGivePermissionToRoleGuardMismatch(t *testing.T) {
+func TestGivePermissionToRoleIgnoresTamperedGuard(t *testing.T) {
 	_, perm := setup(t)
 	role, err := perm.FindOrCreateRole("editor")
 	if err != nil {
@@ -224,8 +224,35 @@ func TestGivePermissionToRoleGuardMismatch(t *testing.T) {
 	if _, err := perm.FindOrCreatePermission("p1"); err != nil {
 		t.Fatal(err)
 	}
-	// Empty role guard → resolvePermissions uses default guard, then compares to "".
-	role.GuardName = ""
+	// Caller-supplied GuardName must be ignored; role is reloaded from DB.
+	role.GuardName = "tampered"
+	if err := perm.GivePermissionToRole(role, "p1"); err != nil {
+		t.Fatalf("expected reload to use DB guard, got %v", err)
+	}
+	ok, err := perm.RoleHasPermission(role, "p1")
+	if err != nil || !ok {
+		t.Fatalf("RoleHasPermission: ok=%v err=%v", ok, err)
+	}
+}
+
+func TestGivePermissionToRoleGuardMismatch(t *testing.T) {
+	db, perm := setup(t)
+	role, err := perm.FindOrCreateRole("editor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := perm.FindOrCreatePermission("p1"); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Callback().Query().After("gorm:query").Register("corrupt_perm_guard", func(tx *gorm.DB) {
+		if dest, ok := tx.Statement.Dest.(*[]permission.Permission); ok {
+			for i := range *dest {
+				(*dest)[i].GuardName = "tampered"
+			}
+		}
+	})
+	t.Cleanup(func() { _ = db.Callback().Query().Remove("corrupt_perm_guard") })
+
 	if err := perm.GivePermissionToRole(role, "p1"); !errors.Is(err, permission.ErrGuardMismatch) {
 		t.Fatalf("expected ErrGuardMismatch, got %v", err)
 	}

@@ -29,6 +29,9 @@ type modelRef struct {
 }
 
 func (m *Manager) resolveModel(model Authorizable) (modelRef, error) {
+	if m == nil {
+		return modelRef{}, ErrInvalidArgument
+	}
 	if model == nil {
 		return modelRef{}, fmt.Errorf("%w: model is nil", ErrInvalidArgument)
 	}

@@ -1,6 +1,10 @@
 package permission
 
-import "fmt"
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
 
 // GetRoles returns roles assigned to model.
 func (m *Manager) GetRoles(model Authorizable) ([]Role, error) {
@@ -8,8 +12,12 @@ func (m *Manager) GetRoles(model Authorizable) ([]Role, error) {
 	if err != nil {
 		return nil, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return nil, err
+	}
 	var roles []Role
-	err = m.db.Table("roles").
+	err = db.Table("roles").
 		Joins("JOIN model_has_roles ON model_has_roles.role_id = roles.id").
 		Where("model_has_roles.model_type = ? AND model_has_roles.model_id = ?", ref.Type, ref.ID).
 		Where("roles.guard_name = ?", ref.Guard).
@@ -23,8 +31,12 @@ func (m *Manager) GetDirectPermissions(model Authorizable) ([]Permission, error)
 	if err != nil {
 		return nil, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return nil, err
+	}
 	var perms []Permission
-	err = m.db.Table("permissions").
+	err = db.Table("permissions").
 		Joins("JOIN model_has_permissions ON model_has_permissions.permission_id = permissions.id").
 		Where("model_has_permissions.model_type = ? AND model_has_permissions.model_id = ?", ref.Type, ref.ID).
 		Where("permissions.guard_name = ?", ref.Guard).
@@ -38,15 +50,21 @@ func (m *Manager) GetPermissionsViaRoles(model Authorizable) ([]Permission, erro
 	if err != nil {
 		return nil, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return nil, err
+	}
 	var perms []Permission
-	err = m.db.Raw(`
+	err = db.Raw(`
 		SELECT DISTINCT permissions.*
 		FROM permissions
 		JOIN role_has_permissions ON role_has_permissions.permission_id = permissions.id
 		JOIN model_has_roles ON model_has_roles.role_id = role_has_permissions.role_id
+		JOIN roles ON roles.id = model_has_roles.role_id
 		WHERE model_has_roles.model_type = ? AND model_has_roles.model_id = ?
 		  AND permissions.guard_name = ?
-	`, ref.Type, ref.ID, ref.Guard).Scan(&perms).Error
+		  AND roles.guard_name = ?
+	`, ref.Type, ref.ID, ref.Guard, ref.Guard).Scan(&perms).Error
 	return perms, err
 }
 
@@ -83,8 +101,12 @@ func (m *Manager) HasRole(model Authorizable, roleName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return false, err
+	}
 	var count int64
-	err = m.db.Table("model_has_roles").
+	err = db.Table("model_has_roles").
 		Joins("JOIN roles ON roles.id = model_has_roles.role_id").
 		Where("model_has_roles.model_type = ? AND model_has_roles.model_id = ?", ref.Type, ref.ID).
 		Where("roles.name = ? AND roles.guard_name = ?", roleName, ref.Guard).
@@ -102,8 +124,12 @@ func (m *Manager) HasAnyRole(model Authorizable, roleNames ...string) (bool, err
 	if err != nil {
 		return false, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return false, err
+	}
 	var count int64
-	err = m.db.Table("model_has_roles").
+	err = db.Table("model_has_roles").
 		Joins("JOIN roles ON roles.id = model_has_roles.role_id").
 		Where("model_has_roles.model_type = ? AND model_has_roles.model_id = ?", ref.Type, ref.ID).
 		Where("roles.name IN ? AND roles.guard_name = ?", names, ref.Guard).
@@ -121,8 +147,12 @@ func (m *Manager) HasAllRoles(model Authorizable, roleNames ...string) (bool, er
 	if err != nil {
 		return false, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return false, err
+	}
 	var matched []string
-	err = m.db.Table("roles").
+	err = db.Table("roles").
 		Joins("JOIN model_has_roles ON model_has_roles.role_id = roles.id").
 		Where("model_has_roles.model_type = ? AND model_has_roles.model_id = ?", ref.Type, ref.ID).
 		Where("roles.name IN ? AND roles.guard_name = ?", names, ref.Guard).
@@ -151,8 +181,16 @@ func (m *Manager) HasDirectPermission(model Authorizable, permissionName string)
 	if err != nil {
 		return false, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return false, err
+	}
+	return m.hasDirectPermission(db, ref, permissionName)
+}
+
+func (m *Manager) hasDirectPermission(db *gorm.DB, ref modelRef, permissionName string) (bool, error) {
 	var count int64
-	err = m.db.Table("model_has_permissions").
+	err := db.Table("model_has_permissions").
 		Joins("JOIN permissions ON permissions.id = model_has_permissions.permission_id").
 		Where("model_has_permissions.model_type = ? AND model_has_permissions.model_id = ?", ref.Type, ref.ID).
 		Where("permissions.name = ? AND permissions.guard_name = ?", permissionName, ref.Guard).
@@ -166,24 +204,29 @@ func (m *Manager) HasPermissionTo(model Authorizable, permissionName string) (bo
 	if permissionName == "" {
 		return false, fmt.Errorf("%w: permission name is empty", ErrInvalidArgument)
 	}
-	ok, err := m.HasDirectPermission(model, permissionName)
-	if err != nil || ok {
-		return ok, err
-	}
 	ref, err := m.resolveModel(model)
 	if err != nil {
 		return false, err
 	}
+	db, err := m.conn()
+	if err != nil {
+		return false, err
+	}
+	ok, err := m.hasDirectPermission(db, ref, permissionName)
+	if err != nil || ok {
+		return ok, err
+	}
 	var count int64
-	err = m.db.Table("role_has_permissions").
+	err = db.Table("role_has_permissions").
 		Joins("JOIN permissions ON permissions.id = role_has_permissions.permission_id").
 		Joins("JOIN model_has_roles ON model_has_roles.role_id = role_has_permissions.role_id").
+		Joins("JOIN roles ON roles.id = model_has_roles.role_id").
 		Where("model_has_roles.model_type = ? AND model_has_roles.model_id = ?", ref.Type, ref.ID).
 		Where("permissions.name = ? AND permissions.guard_name = ?", permissionName, ref.Guard).
+		Where("roles.guard_name = ?", ref.Guard).
 		Count(&count).Error
 	return count > 0, err
 }
-
 // HasAnyPermission reports whether model has at least one of the permissions.
 func (m *Manager) HasAnyPermission(model Authorizable, permissionNames ...string) (bool, error) {
 	names, err := normalizeNames(permissionNames)
@@ -227,14 +270,15 @@ func (m *Manager) Can(model Authorizable, permissionName string) (bool, error) {
 
 // RoleHasPermission reports whether a role owns a permission by name.
 func (m *Manager) RoleHasPermission(role *Role, permissionName string) (bool, error) {
-	if role == nil || role.ID == 0 {
-		return false, fmt.Errorf("%w: role is required", ErrInvalidArgument)
+	role, err := m.loadRole(role)
+	if err != nil {
+		return false, err
 	}
 	if permissionName == "" {
 		return false, fmt.Errorf("%w: permission name is empty", ErrInvalidArgument)
 	}
 	var count int64
-	err := m.db.Table("role_has_permissions").
+	err = m.db.Table("role_has_permissions").
 		Joins("JOIN permissions ON permissions.id = role_has_permissions.permission_id").
 		Where("role_has_permissions.role_id = ?", role.ID).
 		Where("permissions.name = ? AND permissions.guard_name = ?", permissionName, role.GuardName).
@@ -244,13 +288,15 @@ func (m *Manager) RoleHasPermission(role *Role, permissionName string) (bool, er
 
 // GetRolePermissions returns permissions attached to a role.
 func (m *Manager) GetRolePermissions(role *Role) ([]Permission, error) {
-	if role == nil || role.ID == 0 {
-		return nil, fmt.Errorf("%w: role is required", ErrInvalidArgument)
+	role, err := m.loadRole(role)
+	if err != nil {
+		return nil, err
 	}
 	var perms []Permission
-	err := m.db.Table("permissions").
+	err = m.db.Table("permissions").
 		Joins("JOIN role_has_permissions ON role_has_permissions.permission_id = permissions.id").
 		Where("role_has_permissions.role_id = ?", role.ID).
+		Where("permissions.guard_name = ?", role.GuardName).
 		Find(&perms).Error
 	return perms, err
 }

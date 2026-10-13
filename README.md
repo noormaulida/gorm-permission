@@ -133,7 +133,7 @@ The same pattern works with `HasRole` / `HasAnyPermission`.
 | Table / columns | Same defaults as Spatie |
 | `model_type` | Prefer a morph map alias (`admins`) shared with Laravel |
 | `model_id` | Numeric `unsigned big integer` (Spatie default) |
-| Unique `(name, guard_name)` | Not forced by `Migrate` so existing DBs remain compatible |
+| Unique `(name, guard_name)` | Enforced by `Migrate` (same as Spatie). Existing Spatie DBs already have this index |
 
 ## Minimum Go version
 

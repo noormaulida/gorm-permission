@@ -8,20 +8,12 @@ import (
 )
 
 type flakyModel struct {
-	id       uint64
-	typ      string
-	guard    string
-	idCalls  int
-	failAtID int
+	id    uint64
+	typ   string
+	guard string
 }
 
-func (f *flakyModel) PermissionModelID() uint64 {
-	f.idCalls++
-	if f.failAtID > 0 && f.idCalls >= f.failAtID {
-		return 0
-	}
-	return f.id
-}
+func (f *flakyModel) PermissionModelID() uint64   { return f.id }
 func (f *flakyModel) PermissionModelType() string { return f.typ }
 func (f *flakyModel) PermissionGuardName() string { return f.guard }
 
@@ -145,6 +137,9 @@ func TestHasPermissionVariants(t *testing.T) {
 	if _, err := perm.HasPermissionTo(admin, ""); !errors.Is(err, permission.ErrInvalidArgument) {
 		t.Fatalf("HasPermissionTo empty: %v", err)
 	}
+	if _, err := perm.HasPermissionTo(nil, "p1"); !errors.Is(err, permission.ErrInvalidArgument) {
+		t.Fatalf("HasPermissionTo nil model: %v", err)
+	}
 
 	ok, err := perm.HasAnyPermission(admin, "p2", "p1")
 	if err != nil || !ok {
@@ -167,7 +162,7 @@ func TestHasPermissionVariants(t *testing.T) {
 	}
 }
 
-func TestHasPermissionToViaRoleAndFlakyModel(t *testing.T) {
+func TestHasPermissionToViaRole(t *testing.T) {
 	_, perm := setup(t)
 	role, err := perm.FindOrCreateRole("editor")
 	if err != nil {
@@ -185,15 +180,40 @@ func TestHasPermissionToViaRoleAndFlakyModel(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("via role: ok=%v err=%v", ok, err)
 	}
-
-	// HasDirectPermission resolves model once; HasPermissionTo resolves again when direct is false.
-	flaky := &flakyModel{id: 99, typ: "admins", guard: "cms", failAtID: 2}
-	_, err = perm.HasPermissionTo(flaky, "via")
-	if !errors.Is(err, permission.ErrInvalidArgument) {
-		t.Fatalf("expected flaky resolve error, got %v", err)
-	}
 }
 
+func TestCrossGuardViaRoleDoesNotGrant(t *testing.T) {
+	db, perm := setup(t)
+	admin := Admin{Name: "A", Email: "a@example.com"}
+	if err := db.Create(&admin).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// cms permission linked through a web role — must not grant to a cms model.
+	cmsPerm, err := perm.CreatePermission("secret", "cms")
+	if err != nil {
+		t.Fatal(err)
+	}
+	webRole, err := perm.CreateRole("leaky", "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&permission.RoleHasPermission{PermissionID: cmsPerm.ID, RoleID: webRole.ID}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&permission.ModelHasRole{RoleID: webRole.ID, ModelType: "admins", ModelID: admin.ID}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := perm.HasPermissionTo(admin, "secret")
+	if err != nil || ok {
+		t.Fatalf("cms model must not inherit cms perm via web role: ok=%v err=%v", ok, err)
+	}
+	via, err := perm.GetPermissionsViaRoles(admin)
+	if err != nil || len(via) != 0 {
+		t.Fatalf("GetPermissionsViaRoles should be empty, got %+v err=%v", via, err)
+	}
+}
 func TestRoleHasPermissionValidation(t *testing.T) {
 	_, perm := setup(t)
 	role, err := perm.FindOrCreateRole("editor")

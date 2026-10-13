@@ -5,8 +5,8 @@ import "time"
 // Permission mirrors Spatie's permissions table.
 type Permission struct {
 	ID        uint64 `gorm:"primaryKey;autoIncrement"`
-	Name      string `gorm:"size:255;not null"`
-	GuardName string `gorm:"size:255;not null;column:guard_name"`
+	Name      string `gorm:"size:255;not null;uniqueIndex:permissions_name_guard_name_unique"`
+	GuardName string `gorm:"size:255;not null;column:guard_name;uniqueIndex:permissions_name_guard_name_unique"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -17,8 +17,8 @@ func (Permission) TableName() string { return "permissions" }
 // Role mirrors Spatie's roles table.
 type Role struct {
 	ID        uint64 `gorm:"primaryKey;autoIncrement"`
-	Name      string `gorm:"size:255;not null"`
-	GuardName string `gorm:"size:255;not null;column:guard_name"`
+	Name      string `gorm:"size:255;not null;uniqueIndex:roles_name_guard_name_unique"`
+	GuardName string `gorm:"size:255;not null;column:guard_name;uniqueIndex:roles_name_guard_name_unique"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

@@ -7,6 +7,7 @@ import (
 	permission "github.com/noormaulida/gorm-permission"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 type Admin struct {
@@ -21,7 +22,9 @@ func (a Admin) PermissionGuardName() string { return "cms" }
 
 func setup(t *testing.T) (*gorm.DB, *permission.Manager) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file:" + t.Name() + "?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}

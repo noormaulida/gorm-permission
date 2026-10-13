@@ -46,8 +46,10 @@ func (m *Manager) RemoveRole(model Authorizable, roleNames ...string) error {
 	for i, role := range roles {
 		ids[i] = role.ID
 	}
-	return m.db.Where("model_type = ? AND model_id = ? AND role_id IN ?", ref.Type, ref.ID, ids).
-		Delete(&ModelHasRole{}).Error
+	return m.tx(func(tx *gorm.DB) error {
+		return tx.Where("model_type = ? AND model_id = ? AND role_id IN ?", ref.Type, ref.ID, ids).
+			Delete(&ModelHasRole{}).Error
+	})
 }
 
 // SyncRoles replaces all roles on model with the given set (empty clears all).
@@ -117,8 +119,10 @@ func (m *Manager) RevokePermissionTo(model Authorizable, permissionNames ...stri
 	for i, perm := range perms {
 		ids[i] = perm.ID
 	}
-	return m.db.Where("model_type = ? AND model_id = ? AND permission_id IN ?", ref.Type, ref.ID, ids).
-		Delete(&ModelHasPermission{}).Error
+	return m.tx(func(tx *gorm.DB) error {
+		return tx.Where("model_type = ? AND model_id = ? AND permission_id IN ?", ref.Type, ref.ID, ids).
+			Delete(&ModelHasPermission{}).Error
+	})
 }
 
 // SyncPermissions replaces all direct permissions on model (empty clears all).
@@ -150,9 +154,11 @@ func (m *Manager) SyncPermissions(model Authorizable, permissionNames ...string)
 }
 
 // GivePermissionToRole attaches permissions to a role (by permission name).
+// The role is reloaded from the database so caller-supplied GuardName is ignored.
 func (m *Manager) GivePermissionToRole(role *Role, permissionNames ...string) error {
-	if role == nil || role.ID == 0 {
-		return fmt.Errorf("%w: role is required", ErrInvalidArgument)
+	role, err := m.loadRole(role)
+	if err != nil {
+		return err
 	}
 	perms, err := m.resolvePermissions(role.GuardName, permissionNames)
 	if err != nil {
@@ -175,8 +181,9 @@ func (m *Manager) GivePermissionToRole(role *Role, permissionNames ...string) er
 
 // RevokePermissionFromRole removes permissions from a role.
 func (m *Manager) RevokePermissionFromRole(role *Role, permissionNames ...string) error {
-	if role == nil || role.ID == 0 {
-		return fmt.Errorf("%w: role is required", ErrInvalidArgument)
+	role, err := m.loadRole(role)
+	if err != nil {
+		return err
 	}
 	perms, err := m.resolvePermissions(role.GuardName, permissionNames)
 	if err != nil {
@@ -186,17 +193,19 @@ func (m *Manager) RevokePermissionFromRole(role *Role, permissionNames ...string
 	for i, perm := range perms {
 		ids[i] = perm.ID
 	}
-	return m.db.Where("role_id = ? AND permission_id IN ?", role.ID, ids).
-		Delete(&RoleHasPermission{}).Error
+	return m.tx(func(tx *gorm.DB) error {
+		return tx.Where("role_id = ? AND permission_id IN ?", role.ID, ids).
+			Delete(&RoleHasPermission{}).Error
+	})
 }
 
 // SyncPermissionsToRole replaces all permissions on a role (empty clears all).
 func (m *Manager) SyncPermissionsToRole(role *Role, permissionNames ...string) error {
-	if role == nil || role.ID == 0 {
-		return fmt.Errorf("%w: role is required", ErrInvalidArgument)
+	role, err := m.loadRole(role)
+	if err != nil {
+		return err
 	}
 	var perms []Permission
-	var err error
 	if len(permissionNames) > 0 {
 		perms, err = m.resolvePermissions(role.GuardName, permissionNames)
 		if err != nil {

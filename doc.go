@@ -16,6 +16,6 @@
 //	role, _ := perm.FindOrCreateRole("super-administrator")
 //	_, _ = perm.FindOrCreatePermission("cms.admins.view")
 //	_ = perm.GivePermissionToRole(role, "cms.admins.view")
-//	_ = perm.AssignRole(admin, role)
+//	_ = perm.AssignRole(admin, "super-administrator")
 //	ok, _ := perm.HasPermissionTo(admin, "cms.admins.view")
 package permission
