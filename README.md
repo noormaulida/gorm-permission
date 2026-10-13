@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="https://skillicons.dev/icons?i=go" alt="Go" width="80" />
-</p>
-
-<p align="center">
-  <img src=".github/gorm-permission-new.png" alt="gorm-permission" width="300" />
+  <img src=".github/gorm-permission-new.png" alt="gorm-permission" width="400" />
 </p>
 
 <p align="center">
