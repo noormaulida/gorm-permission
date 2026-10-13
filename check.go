@@ -2,6 +2,7 @@ package permission
 
 import (
 	"fmt"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -68,7 +69,8 @@ func (m *Manager) GetPermissionsViaRoles(model Authorizable) ([]Permission, erro
 	return perms, err
 }
 
-// GetAllPermissions returns the union of direct and role permissions.
+// GetAllPermissions returns the union of direct and role permissions,
+// sorted by permission ID ascending.
 func (m *Manager) GetAllPermissions(model Authorizable) ([]Permission, error) {
 	direct, err := m.GetDirectPermissions(model)
 	if err != nil {
@@ -89,6 +91,7 @@ func (m *Manager) GetAllPermissions(model Authorizable) ([]Permission, error) {
 	for _, p := range byID {
 		out = append(out, p)
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
 

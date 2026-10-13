@@ -290,4 +290,9 @@ func TestGetAllPermissionsMergesDirectAndRole(t *testing.T) {
 	if !names["via.role"] || !names["direct.perm"] {
 		t.Fatalf("expected merged permissions, got %#v", names)
 	}
+	for i := 1; i < len(all); i++ {
+		if all[i-1].ID > all[i].ID {
+			t.Fatalf("expected ascending ID order, got %#v", all)
+		}
+	}
 }

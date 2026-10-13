@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="320" rx="24" fill="url(#bg)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="820" cy="40" r="120" fill="#818cf8" opacity="0.07"/>
+  <circle cx="60" cy="300" r="90" fill="#22d3ee" opacity="0.06"/>
+
+  <!-- Permission icon (shield with lock) -->
+  <g transform="translate(90,70) scale(0.9)" filter="url(#shadow)">
+    <path d="M90 0 L170 30 L170 100 C170 150 135 185 90 200 C45 185 10 150 10 100 L10 30 Z"
+          fill="url(#accent)"/>
+    <path d="M90 14 L156 40 L156 100 C156 140 128 168 90 182 C52 168 24 140 24 100 L24 40 Z"
+          fill="#1e1b4b" opacity="0.85"/>
+    <!-- Lock body -->
+    <rect x="66" y="100" width="48" height="40" rx="7" fill="#e0e7ff"/>
+    <!-- Lock shackle -->
+    <path d="M74 100 L74 84 C74 70 106 70 106 84 L106 100" fill="none" stroke="#e0e7ff" stroke-width="8" stroke-linecap="round"/>
+    <!-- Keyhole -->
+    <circle cx="90" cy="115" r="6" fill="#1e1b4b"/>
+    <rect x="87" y="118" width="6" height="10" rx="2" fill="#1e1b4b"/>
+  </g>
+
+  <!-- Title -->
+  <text x="290" y="140" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="58" font-weight="700" fill="#f8fafc">gorm-permission</text>
+
+  <!-- Accent line -->
+  <rect x="292" y="168" width="120" height="5" rx="2.5" fill="url(#accent)"/>
+
+  <!-- Badges -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600">
+    <rect x="292" y="196" width="70" height="32" rx="16" fill="#0ea5e9" opacity="0.2" stroke="#0ea5e9"/>
+    <text x="327" y="217" text-anchor="middle" fill="#7dd3fc">Go</text>
+
+    <rect x="372" y="196" width="90" height="32" rx="16" fill="#34d399" opacity="0.2" stroke="#34d399"/>
+    <text x="417" y="217" text-anchor="middle" fill="#6ee7b7">GORM</text>
+
+    <rect x="472" y="196" width="90" height="32" rx="16" fill="#f59e0b" opacity="0.2" stroke="#f59e0b"/>
+    <text x="517" y="217" text-anchor="middle" fill="#fcd34d">RBAC</text>
+
+    <rect x="572" y="196" width="120" height="32" rx="16" fill="#a78bfa" opacity="0.2" stroke="#a78bfa"/>
+    <text x="632" y="217" text-anchor="middle" fill="#c4b5fd">Authorization</text>
+  </g>
+</svg>

@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <img src=".github/gorm-permission.svg" alt="gorm-permission" width="200" />
+</p>
+
+<p align="center">
   Spatie Laravel Permission–compatible roles and permissions for GORM.
 </p>
 

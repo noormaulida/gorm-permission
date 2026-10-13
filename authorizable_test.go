@@ -101,6 +101,82 @@ func TestPrimaryKeyIDVariants(t *testing.T) {
 			t.Fatalf("id=%d err=%v", id, err)
 		}
 	})
+	t.Run("gorm primaryKey tag", func(t *testing.T) {
+		type row struct {
+			UserID uint64 `gorm:"primaryKey"`
+			Name   string
+		}
+		id, err := permission.PrimaryKeyID(row{UserID: 42, Name: "x"})
+		if err != nil || id != 42 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("embedded primaryKey", func(t *testing.T) {
+		type base struct {
+			BaseID uint64 `gorm:"primaryKey;autoIncrement"`
+		}
+		type row struct {
+			base
+			Name string
+		}
+		id, err := permission.PrimaryKeyID(row{base: base{BaseID: 7}, Name: "x"})
+		if err != nil || id != 7 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("embedded ID fallback", func(t *testing.T) {
+		type base struct{ ID uint64 }
+		type row struct {
+			base
+			Name string
+		}
+		id, err := permission.PrimaryKeyID(row{base: base{ID: 3}, Name: "x"})
+		if err != nil || id != 3 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("skip embed without ID then use ID", func(t *testing.T) {
+		type embed struct{ Name string }
+		type row struct {
+			embed
+			ID uint64
+		}
+		id, err := permission.PrimaryKeyID(row{ID: 4})
+		if err != nil || id != 4 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("anonymous without pk then tagged", func(t *testing.T) {
+		type embed struct{ Name string }
+		type row struct {
+			embed
+			UserID uint64 `gorm:"primaryKey"`
+		}
+		id, err := permission.PrimaryKeyID(row{UserID: 8})
+		if err != nil || id != 8 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("unexported primaryKey ignored", func(t *testing.T) {
+		type row struct {
+			userID uint64 `gorm:"primaryKey"`
+			ID     uint64
+		}
+		id, err := permission.PrimaryKeyID(row{userID: 1, ID: 5})
+		if err != nil || id != 5 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
+	t.Run("primaryKey preferred over ID", func(t *testing.T) {
+		type row struct {
+			ID     uint64
+			UserID uint64 `gorm:"primaryKey"`
+		}
+		id, err := permission.PrimaryKeyID(row{ID: 1, UserID: 99})
+		if err != nil || id != 99 {
+			t.Fatalf("id=%d err=%v", id, err)
+		}
+	})
 	t.Run("non-positive int", func(t *testing.T) {
 		type row struct{ ID int }
 		_, err := permission.PrimaryKeyID(row{ID: 0})
